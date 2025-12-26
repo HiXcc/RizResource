@@ -1,6 +1,6 @@
-#RizResource
+# RizResource
 本项目依赖[Vgmstream](https://github.com/vgmstream/vgmstream)
 
-#SpecialThanks:
+# SpecialThanks:
 - 咕的岛鸽
 - [Phigros_Resource](https://github.com/7aGiven/Phigros_Resource/)
