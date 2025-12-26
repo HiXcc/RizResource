@@ -1,13 +1,10 @@
 import base64
-import json
 import requests
 import UnityPy
-from zipfile import ZipFile
-from os import remove
+import os
+import shutil
 
 from acbtoogg import convert_acb_to_ogg
-
-'''bundle文件一般都是UnityFS的文件头 acb为@utf'''
 
 class ByteReader:
     def __init__(self, data):
@@ -18,14 +15,14 @@ class ByteReader:
         self.position += 4
         return self.data[self.position - 4] ^ self.data[self.position - 3] << 8 ^ self.data[self.position - 2] << 16
 
-def getver_command():
+def getver():
     """返回示例:https://rizlineasset.pigeongames.net/versions/v109_2_0_9_523d8dd4e0P"""
     headers = {"game_id":"pigeongames.rizline"}
     ver = requests.get("https://rizserver.pigeongames.net/game/server_api/v1/dis",headers=headers)
     return ver.json()["configs"][0]["resourceUrl"]
 
-def test_command():
-    version:str = getver_command()
+def main():
+    version:str = getver()
     version = version.split("/")[-1]
     while not version.startswith("<?xml"):
         #https://rizlineasset.pigeongames.net/versions/v101_2_0_9_fed974f1d6P/patch_metadata
@@ -36,14 +33,15 @@ def test_command():
     version = url.split("/")[4]
     #https://rizlineasset.pigeongames.net/versions/v100_2_0_8_86e2fda4e0/Android/catalog_catalog.json
     catalog = requests.get(f"https://rizlineasset.pigeongames.net/versions/{version}/Android/catalog_catalog.json").json()
-    run(catalog,version)
+    resource_get(catalog,version)
 
-def run(path):
-    with ZipFile(path) as apk:
-        #riz/assets/aa/catalog.json
-        with apk.open("assets/aa/catalog.json") as f:
-            data = json.load(f)
-
+def resource_get(catalog,ver):
+    data = catalog
+    dir_name = ["chart","illustration","music-acb","music-ogg","Unpack_log"]
+    for dir in dir_name:
+        if os.path.exists(dir):
+            shutil.rmtree(dir)
+        os.mkdir(dir)
     key = base64.b64decode(data["m_KeyDataString"])
     bucket = base64.b64decode(data["m_BucketDataString"])
     entry = base64.b64decode(data["m_EntryDataString"])
@@ -90,23 +88,23 @@ def run(path):
             Resource.append(table[i])
     
     with open("Unpack_log/all_resource","w",encoding="utf-8") as f:
-        for i in range(len(table)):
-            f.write(str(table[i])+"\n")  # 记录所有符合的资源
+        for i in range(len(Resource)):
+            f.write(str(Resource)+"\n")  # 记录所有符合的资源
 
     with open("Unpack_log/chart_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:5] == "chart":
-                f.write(str(Resource[i])+"\n")  # 记录所有符合的资源
+                f.write(str(Resource[i])+"\n")  # 记录所有符合的谱面资源
     
     with open("Unpack_log/illustration_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:12] == "illustration":
-                f.write(str(Resource[i])+"\n")  # 记录所有符合的资源
+                f.write(str(Resource[i])+"\n")  # 记录所有符合的曲绘资源
     
     with open("Unpack_log/music_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:16] == "CriAddressables/":
-                f.write(str(Resource[i])+"\n")  # 记录所有符合的资源
+                f.write(str(Resource[i])+"\n")  # 记录所有符合的音乐资源
 
     # 谱面示例:['chart.CrazyAudiophile.Supa7onyz.0.IN', '12523ede2bc20dcc4a7822bdd566d2ee.bundle']
     # 音频示例:['CriAddressables/onandon.etia.0.acb=367a00', 'cridata_assets_criaddressables/onandon.etia.0.acb=367a00_7befa38d3fd5cd186b258db5e6641db1.bundle']
@@ -114,29 +112,33 @@ def run(path):
     # bundle文件内含有该谱面
 
     for key, entry in Resource:
+        entry:str
         part = key.split(".")
         if part[0] in ["chart","illustration"]:
-            url = "https://rizlineasset.pigeongames.net/versions/v31_2_0_4_6db93b3837/Android/%s"%entry
+            url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/{entry}"
         elif "CriAddressables/" in part[0]:
-            path = key[16:]
-            url = "https://rizlineasset.pigeongames.net/versions/v31_2_0_4_6db93b3837/Android/cridata_assets_criaddressables/%s"%path
-            with open("music-acb/%s"%path[:-7],"wb") as m:
-                m.write(requests.get(url).content)
-            if not convert_acb_to_ogg("music-acb/%s"%path[:-7], "music-ogg"):
-                remove("music-acb/%s"%path[:-7])
+            if entry.startswith("cridata_assets_criaddressables/"):
+                path = key[16:]
+                url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/cridata_assets_criaddressables/{path}"
+                with open("music-acb/%s"%path[:-7],"wb") as m:
+                    m.write(requests.get(url).content)
+                if not convert_acb_to_ogg("music-acb/%s"%path[:-7], "music-ogg"):
+                    os.remove("music-acb/%s"%path[:-7])
             continue
         bundle = requests.get(url)
+        print(f"url:{url}")
         env = UnityPy.load(bundle.content)  # 加载bundle文件
         for obj in env.objects:  # 遍历所有bundle的所有资源
             data = obj.read()
             if obj.type.name == "TextAsset":  # 若为文字资源
-                content = data.script
-                content_bytes = bytes(content)
+                content = data.m_Script.encode()
                 with open("chart/%s.json"%key, "wb") as f:
-                    f.write(content_bytes)
+                    f.write(content)
             if obj.type.name == "Texture2D":
                 data.image.save("illustration/%s.png"%key)
-
+    print("done.")
 #default/Android/cridata_assets_criaddressables/nonamerequiem.打打だいず.0.acb=3ce880.bundle
 #https://rizlineasset.pigeongames.net/versions/v31_2_0_4_6db93b3837/Android/cridata_assets_criaddressables/nonamerequiem.打打だいず.0.acb=3ce880
 #https://rizlineasset.pigeongames.net/versions/v31_2_0_4_6db93b3837/Android/cridata_assets_criaddressables/%s
+if __name__ == "__main__":
+    main()
