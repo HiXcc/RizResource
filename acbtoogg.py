@@ -9,7 +9,7 @@ def convert_acb_to_ogg(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe")
         return False
     
     if not os.path.isfile(vgmstream_path):
-        print(f"错误: vgmstream-cli.exe未找到 - {vgmstream_path}")
+        print(f"错误: vgmstream未找到 - {vgmstream_path}")
         return False
     
     os.makedirs(output_dir, exist_ok=True)
@@ -52,11 +52,3 @@ def convert_acb_to_ogg(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe")
     except Exception as e:
         print(f"发生未知错误: {str(e)}")
         return False
-
-if __name__ == "__main__":
-    music_dir = "music"
-    output_dir = "output"
-    vgmstream_path = "vgmstream-cli.exe"
-    acb_files = glob.glob(os.path.join(music_dir, "*.acb"))
-    
-    convert_acb_to_ogg("夢厭coneleganza.大前司.0.acb", output_dir, vgmstream_path)
