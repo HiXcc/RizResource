@@ -130,7 +130,7 @@ def resource_get(catalog,ver):
         env = UnityPy.load(bundle.content)  # 加载bundle文件
         for obj in env.objects:  # 遍历所有bundle的所有资源
             data = obj.read()
-            if obj.type.name == "TextAsset":  # 若为文字资源
+            if obj.type.name == "TextAsset":
                 content = data.m_Script.encode()
                 with open("chart/%s.json"%key, "wb") as f:
                     f.write(content)
@@ -142,3 +142,4 @@ def resource_get(catalog,ver):
 #https://rizlineasset.pigeongames.net/versions/v31_2_0_4_6db93b3837/Android/cridata_assets_criaddressables/%s
 if __name__ == "__main__":
     main()
+
