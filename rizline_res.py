@@ -5,10 +5,13 @@ import os
 import shutil
 import json
 
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 from acbtoogg import convert_acb_to_ogg
+
+global ssl
+ssl = True
+if not ssl:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class ByteReader:
     def __init__(self, data):
@@ -28,7 +31,7 @@ def get_info(list,id) -> dict:
 def getver():
     """返回示例:https://rizlineasset.pigeongames.net/versions/v109_2_0_9_523d8dd4e0P"""
     headers = {"game_id":"pigeongames.rizline"}
-    ver = requests.get("https://rizserver.pigeongames.net/game/server_api/v1/dis",headers=headers,verify=False)
+    ver = requests.get("https://rizserver.pigeongames.net/game/server_api/v1/dis",headers=headers,verify=ssl)
     """{"configs":[{"version":"2.0.9","resourceUrl":"https://rizlineasset.pigeongames.net/versions/v109_2_0_9_523d8dd4e0P","resourceBaseUrl":"https://rizlineasset.pigeongames.net/versions","resourceVersion":"v109_2_0_9_523d8dd4e0P"}],"minimalVersion":"2.0.9"}"""
     return ver.json()["configs"][0]["resourceUrl"]
 
@@ -38,12 +41,12 @@ def main():
     while not version.startswith("<?xml"):
         #https://rizlineasset.pigeongames.net/versions/v101_2_0_9_fed974f1d6P/patch_metadata
         url = f"https://rizlineasset.pigeongames.net/versions/{version}/patch_metadata"
-        version = requests.get(url,verify=False).text.split("\n")[0]
+        version = requests.get(url,verify=ssl).text.split("\n")[0]
     print(url)
     #https://rizlineasset.pigeongames.net/versions/v100_2_0_8_86e2fda4e0/patch_metadata
     version = url.split("/")[4]
     #https://rizlineasset.pigeongames.net/versions/v100_2_0_8_86e2fda4e0/Android/catalog_catalog.json
-    catalog = requests.get(f"https://rizlineasset.pigeongames.net/versions/{version}/Android/catalog_catalog.json",verify=False).json()
+    catalog = requests.get(f"https://rizlineasset.pigeongames.net/versions/{version}/Android/catalog_catalog.json",verify=ssl).json()
     resource_get(catalog,version)
 
 def resource_get(data,ver):
@@ -65,7 +68,7 @@ def resource_get(data,ver):
         hash_res = res["m_Hash"]
         url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/{hash_res}.bundle"
         print("url:"+url)
-        bundle = requests.get(url,verify=False)
+        bundle = requests.get(url,verify=ssl)
         env = UnityPy.load(bundle.content)  # 加载bundle文件
         for obj in env.objects:  # 遍历所有bundle的所有资源
             data = obj.read()
@@ -177,11 +180,11 @@ def resource_get(data,ver):
                 path = key[16:]
                 url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/cridata_assets_criaddressables/{path}"
                 with open("music-acb/%s"%path[:-7],"wb") as m:
-                    m.write(requests.get(url,verify=False).content)
+                    m.write(requests.get(url,verify=ssl).content)
                 if not convert_acb_to_ogg("music-acb/%s"%path[:-7], "music-ogg"):
                     os.remove("music-acb/%s"%path[:-7])
             continue
-        bundle = requests.get(url,verify=False)
+        bundle = requests.get(url,verify=ssl)
         print(f"url:{url}")
         env = UnityPy.load(bundle.content)  # 加载bundle文件
         for obj in env.objects:  # 遍历所有bundle的所有资源
@@ -195,3 +198,4 @@ def resource_get(data,ver):
     print("done.")
 if __name__ == "__main__":
     main()
+
