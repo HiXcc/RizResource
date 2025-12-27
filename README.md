@@ -82,7 +82,7 @@ https://rizlineasset.pigeongames.net/versions/{ver}/Android/{"m_Hash"}.bundle
 
 # 无聊琐事
 某些时间rizline的服务器ssl证书可能会掉.导致无法正常登录与下载资源  
-因此在更新时可考虑绕过SSL证书验证(反正就我一个人用(逃
+因此可考虑绕过SSL证书验证(反正就我一个人用(逃
 
 # SpecialThanks:
 - [咕的岛鸽](https://space.bilibili.com/521730845)
