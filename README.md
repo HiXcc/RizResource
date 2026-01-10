@@ -20,6 +20,12 @@ https://rizserver.pigeongames.net/game/server_api/v1/dis
 ```
 以"resourceVersion"作为⌈version⌋,向
 ```
+https://rizlineasset.pigeongames.net/versions/{version}/Android/catalog_catalog.json
+```
+发出请求,即可获取最新的catalog.json.
+
+## 获取对应热更新版本的特定资源
+```
 https://rizlineasset.pigeongames.net/versions/{version}/patch_metadata
 ```
 发出请求,此时有两种返回:
@@ -33,6 +39,9 @@ Android/catalog_catalog.json
 iOS/catalog_catalog.hash
 iOS/catalog_catalog.json
 ......
+
+此时应当记录除catalog_catalog.json外的资源并记录此时url所对应的version
+这些资源将使用特定的version进行下载
 ```
 此时将以返回值第一行的版本号(如上即v100_2_0_8_86e2fda4e0)作为新的⌈version⌋进行请求.
 #### 第二种
@@ -48,11 +57,7 @@ iOS/catalog_catalog.json
   <RecommendDoc>https://api.aliyun.com/troubleshoot?q=0026-00000001</RecommendDoc>
 </Error>
 ```
-这意味着此时的⌈version⌋为最新的版本号,此时可以向
-```
-https://rizlineasset.pigeongames.net/versions/{version}/Android/catalog_catalog.json
-```
-发出请求,获取最新的catalog.json.
+这意味着所有目前已更新的热更新结束.
 
 ## 获取具体资源
 *Rizline的catalog.json与Phigros的结构类似,但额外多出"m_ExtraDataString",且资产标识头有所不同.  
@@ -65,6 +70,13 @@ key/bucket/entry用于获取在游戏内的所有曲绘/音乐/谱面
 资产所在url:
 ```
 https://rizlineasset.pigeongames.net/versions/{ver}/Android/{entry}
+
+如果ver可以对应进之前所记录的特殊资源,则应当使用对应的version进行下载
+关于音乐:
+可以尝试以下三种url(存疑):
+https://rizlineasset.pigeongames.net/versions/{api所返回的最新版本}/Android/{entry}
+https://rizlineasset.pigeongames.net/versions/{最后一个热更新的版本}/Android/{entry}
+https://rizlineasset.pigeongames.net/versions/{特定资源的version}/Android/{entry}
 ```
 音乐于服务器上的格式为.acb,应当进行转换.  
   
@@ -87,3 +99,4 @@ https://rizlineasset.pigeongames.net/versions/{ver}/Android/{"m_Hash"}.bundle
 # SpecialThanks:
 - [咕的岛鸽](https://space.bilibili.com/521730845)
 - [Phigros_Resource](https://github.com/7aGiven/Phigros_Resource/)
+- [CHCAT1320](https://github.com/CHCAT1320)
