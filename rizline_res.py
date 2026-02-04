@@ -47,8 +47,7 @@ def main():
     url = f"{base_version}/Android/catalog_catalog.json"
     catalog = requests.get(f"{base_version}/Android/catalog_catalog.json",verify=ssl).json()
     base_version = base_version.split("/")[-1]
-    info = info_get(catalog,base_version)
-
+    version_list = [base_version]
     result = requests.get(f"https://rizlineasset.pigeongames.net/versions/{base_version}/patch_metadata",verify=ssl)
     last_version = base_version
     result.encoding = "utf-8"
@@ -69,37 +68,51 @@ def main():
         result = result.text
         result = result.split("\n")
         last_version = version
+        version_list.insert(0,last_version)
         version = result[0]
         bundle_version_dict.update({"base_v":base_version})
+    bundle_version_dict.update({"verlist":version_list})
     bundle_version_dict.update({"catalog_catalog.json":last_version})
-    with open("version_file.json","w",encoding="utf-8") as f:
+    with open("Rizline_Resource/version_file.json","w",encoding="utf-8") as f:
         json.dump(bundle_version_dict,f,ensure_ascii=False)
     #https://rizlineasset.pigeongames.net/versions/v100_2_0_8_86e2fda4e0/Android/catalog_catalog.json
+    info = info_get(bundle_version_dict.copy())
+    print("info获取完毕.")
     resource_get(catalog,bundle_version_dict)
     zip_pack(info)
-    print("done.")
+    print("解包完毕")
 
-def info_get(data,ver):
-    default_ = base64.b64decode(data["m_ExtraDataString"])
-    text = f"[{default_.decode(errors="ignore").replace("\u0000","").replace("LUnity.ResourceManager, Version=0.0.0.0, Culture=neutral, PublicKeyToken=nullJUnityEngine.ResourceManagement.ResourceProviders.AssetBundleRequestOptions",",")[1:]}]"
-    extra_resource = json.loads(text)
-    with open("t.json","w",encoding="utf-8") as f:
-        json.dump(extra_resource,f,ensure_ascii=False)
-
-    for res in extra_resource:
-        if res["m_BundleSize"] < 20000000:
-            continue
-        hash_res = res["m_Hash"]
-        url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/{hash_res}.bundle"
-        print("url:"+url)
-        bundle = requests.get(url,verify=ssl)
-        env = UnityPy.load(bundle.content)  # 加载bundle文件
-        for obj in env.objects:  # 遍历所有bundle的所有资源
-            data = obj.read()
-            if hasattr(data,"m_Name"):
-                if data.m_Name == "Default":
-                    if obj.type.name == "MonoBehaviour":
+def info_get(bundle:dict):
+    end = 0
+    for res,ver in bundle.items():
+        if isinstance(res,str):
+            if not res.endswith(".bundle"):
+                continue
+            url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/{res}"
+            response = requests.head(url, allow_redirects=True, verify=ssl, stream=True)
+            res_size = int(response.headers.get('Content-Length'))
+            if 12000 < res_size < 50000000:
+                continue
+            if res_size < 3800:
+                continue
+            bundle = requests.get(url,verify=ssl,stream=True)
+            env = UnityPy.load(bundle.content)  # 加载bundle文件
+            for obj in env.objects:  # 遍历所有bundle的所有资源
+                data = obj.read()
+                if hasattr(data,"m_Name"):
+                    if data.m_Name == "Default":
+                        print("derf")
                         d = obj.read_typetree()
+                        end += 1
+                        break
+                    if "zh-Hans." in data.m_Name:
+                        print(data.m_Name)
+                        with open(f"Rizline_Resource/{data.m_Name}.txt","wb") as tf:
+                            tf.write(data.m_Script.encode())
+                        end += 1
+                        break
+        if end >= 4:
+            break
     infos = []
     for song in d["levels"]:
         id = song["id"]
@@ -124,9 +137,9 @@ def info_get(data,ver):
             info.update({chart["level"]:{"diff":chart["difficulty"],
                                          "charter":chart["designer"]}})
         infos.append(info)
-    with open("info.json","w",encoding="utf-8") as default_mono:
+    with open("Rizline_Resource/info.json","w",encoding="utf-8") as default_mono:
         json.dump(infos,default_mono,ensure_ascii=False)
-    with open("default_raw.json","w",encoding="utf-8") as default_mono:
+    with open("Rizline_Resource/default_raw.json","w",encoding="utf-8") as default_mono:
         json.dump(d,default_mono,ensure_ascii=False)
 
     print("info done.")
@@ -135,9 +148,8 @@ def info_get(data,ver):
 def resource_get(data,verlist):
     dir_name = ["chart","illustration","music-acb","music-ogg","Unpack_log","zip"]
     for dir in dir_name:
-        if not os.path.exists(dir):
-            #shutil.rmtree(dir)
-            os.mkdir(dir)
+        if not os.path.exists(f"Rizline_Resource/{dir}"):
+            os.mkdir(f"Rizline_Resource/{dir}")
     key = base64.b64decode(data["m_KeyDataString"])
     bucket = base64.b64decode(data["m_BucketDataString"])
     entry = base64.b64decode(data["m_EntryDataString"])
@@ -186,23 +198,23 @@ def resource_get(data,verlist):
         else:
             extra.append(table[i])
     
-    with open("Unpack_log/all_resource","w",encoding="utf-8") as f:
+    with open("Rizline_Resource/Unpack_log/all_resource","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             f.write(str(Resource[i])+"\n")  # 记录所有符合的资源
         for i in range(len(extra)):
             f.write(str(extra[i])+"\n")
 
-    with open("Unpack_log/chart_log","w",encoding="utf-8") as f:
+    with open("Rizline_Resource/Unpack_log/chart_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:5] == "chart":
                 f.write(str(Resource[i])+"\n")  # 记录所有符合的谱面资源
     
-    with open("Unpack_log/illustration_log","w",encoding="utf-8") as f:
+    with open("Rizline_Resource/Unpack_log/illustration_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:12] == "illustration":
                 f.write(str(Resource[i])+"\n")  # 记录所有符合的曲绘资源
     
-    with open("Unpack_log/music_log","w",encoding="utf-8") as f:
+    with open("Rizline_Resource/Unpack_log/music_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:16] == "CriAddressables/":
                 f.write(str(Resource[i])+"\n")  # 记录所有符合的音乐资源
@@ -220,48 +232,49 @@ def resource_get(data,verlist):
             ver = verlist[entry]
         else:
             ver = verlist["catalog_catalog.json"]
-        part = key.split(".")
-        if part[0] in ["chart","illustration"]:
+        if os.path.exists("Rizline_Resource/chart/%s.json"%key):
+            continue
+        if os.path.exists("Rizline_Resource/illustration/%s.png"%key):
+            continue
+        if key.startswith(("chart","illustration")):
             url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/{entry}"
         elif key.startswith("CriAddressables/") and not entry.startswith("crilocaldata_assets_all"):
             path = key[16:]
-            url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/cridata_assets_criaddressables/{path}"
-            music_data = requests.get(url,verify=ssl)
-            if music_data.status_code == 404:
-                url = f"https://rizlineasset.pigeongames.net/versions/{verlist["base_v"]}/Android/cridata_assets_criaddressables/{path}"
-                music_data = requests.get(url,verify=ssl)
-            if music_data.status_code == 404:
-                url = f"https://rizlineasset.pigeongames.net/versions/{verlist["catalog_catalog.json"]}/Android/cridata_assets_criaddressables/{path}"
-                music_data = requests.get(url,verify=ssl)
-            print(f"music_url:{url}")
             file_name = path[:-7]
             if not safe_string(file_name):
                 file_name = file_name.encode("gbk",errors="ignore").decode("utf-8")
-            print(file_name)
-            with open(f"music-acb/{file_name}","wb") as m:
+            if os.path.exists(f"Rizline_Resource/music-ogg/{file_name[:-4]}.ogg"):
+                continue
+            url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/cridata_assets_criaddressables/{path}"
+            music_data = requests.get(url,verify=ssl)
+            if music_data.status_code == 404:
+                for ver in verlist["verlist"]:
+                    music_data = requests.get(url,verify=ssl)
+                    if music_data.status_code != 404:
+                        break
+            with open(f"Rizline_Resource/music-acb/{file_name}","wb") as m:
                 m.write(music_data.content)
             continue
         else:
             continue
         bundle = requests.get(url,verify=ssl)
-        print(f"ill_chart_url:{url}")
         env = UnityPy.load(bundle.content)  # 加载bundle文件
         for obj in env.objects:  # 遍历所有bundle的所有资源
             data = obj.read()
             if obj.type.name == "TextAsset":  # 若为文字资源
                 content = data.m_Script.encode()
-                with open("chart/%s.json"%key, "wb") as f:
+                with open("Rizline_Resource/chart/%s.json"%key, "wb") as f:
                     f.write(content)
             if obj.type.name == "Texture2D":
-                data.image.save("illustration/%s.png"%key)
+                data.image.save("Rizline_Resource/illustration/%s.png"%key)
     
-    for music_acb in os.listdir("music-acb/"):
+    for music_acb in os.listdir("Rizline_Resource/music-acb/"):
         if not safe_string(music_acb):
             music_acb = music_acb.encode("gbk",errors="ignore").decode("utf-8")
-        if not convert_acb_to_ogg(f"music-acb/{music_acb}", "music-ogg"):
+        if not convert_acb_to_ogg(f"Rizline_Resource/music-acb/{music_acb}", "Rizline_Resource/music-ogg"):
             print(f"error:{music_acb}")
         else:
-            os.remove(f"music-acb/{music_acb}")
+            os.remove(f"Rizline_Resource/music-acb/{music_acb}")
 
     print("resource done.")
 
@@ -269,25 +282,24 @@ def zip_pack(infos):
     #打包
     diffs = ["","EZ","HD","IN","AT"]
     for diff in diffs[1:]:
-        if not os.path.isdir(f"zip/{diff}/"):
-            os.mkdir(f"zip/{diff}")
+        if not os.path.isdir(f"Rizline_Resource/zip/{diff}/"):
+            os.mkdir(f"Rizline_Resource/zip/{diff}")
     for song_info in infos:
         for temp_diff in diffs[::-1]:
             if temp_diff in song_info:
-                break
-        real_song_info = {"name":song_info["name"],
-                          "composer":song_info["composer"],
-                          "illustrator":song_info["illustrator"],
-                          "diff":song_info[temp_diff]["diff"],
-                          "charter":song_info[temp_diff]["charter"]}
-        music_id = song_info["music_id"].lower()
-        if not safe_string(music_id):
-            music_id = music_id.encode("gbk",errors="ignore").decode("utf-8")
-        with ZipFile(f"zip/{temp_diff}/{song_info["id"]}.zip","w") as chart_zip:
-            chart_zip.write(f"chart/{song_info["chart_id"][-1]}.json",arcname="chart.json")
-            chart_zip.write(f"music-ogg/{music_id}.ogg",arcname="music.ogg")
-            chart_zip.write(f"illustration/{song_info["illustration_id"]}.png",arcname="illustration.png")
-            chart_zip.writestr("info",json.dumps(real_song_info))
+                real_song_info = {"name":song_info["name"],
+                                "composer":song_info["composer"],
+                                "illustrator":song_info["illustrator"],
+                                "diff":song_info[temp_diff]["diff"],
+                                "charter":song_info[temp_diff]["charter"]}
+                music_id = song_info["music_id"].lower()
+                if not safe_string(music_id):
+                    music_id = music_id.encode("gbk",errors="ignore").decode("utf-8")
+                with ZipFile(f"Rizline_Resource/zip/{temp_diff}/{song_info["id"]}.zip","w") as chart_zip:
+                    chart_zip.write(f"Rizline_Resource/chart/{song_info["chart_id"][-1]}.json",arcname="chart.json")
+                    chart_zip.write(f"Rizline_Resource/music-ogg/{music_id}.wav",arcname="music.ogg")
+                    chart_zip.write(f"Rizline_Resource/illustration/{song_info["illustration_id"]}.png",arcname="illustration.png")
+                    chart_zip.writestr("info",json.dumps(real_song_info))
     
     print("pack done.")
 
