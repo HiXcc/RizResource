@@ -16,7 +16,7 @@ def convert_acb_to_ogg(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe")
     
     base_name = os.path.basename(acb_path)
     file_name_without_ext = os.path.splitext(base_name)[0]
-    output_file = f"{file_name_without_ext}.ogg"
+    output_file = f"{file_name_without_ext}.wav"
     output_path = os.path.join(output_dir, output_file)
     
     command = [
@@ -52,3 +52,4 @@ def convert_acb_to_ogg(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe")
     except Exception as e:
         print(f"发生未知错误: {str(e)}")
         return False
+
