@@ -43,6 +43,8 @@ iOS/catalog_catalog.json
 此时应当记录除catalog_catalog.json外的资源并记录此时url所对应的version
 这些资源将使用特定的version进行下载
 ```
+*这时的返回的内容均需要记录,为特殊资源,在获取时应使用https://rizlineasset.pigeongames.net/versions/{此时的ver}/......
+(此时的ver是指发出这个请求的version 而非第一行的新version)
 此时将以返回值第一行的版本号(如上即v100_2_0_8_86e2fda4e0)作为新的⌈version⌋进行请求.
 #### 第二种
 ```
@@ -73,13 +75,14 @@ https://rizlineasset.pigeongames.net/versions/{ver}/Android/{entry}
 
 如果ver可以对应进之前所记录的特殊资源,则应当使用对应的version进行下载
 关于音乐:
-可以尝试以下三种url(存疑):
+可以尝试以下三种url(存疑)(其实你大可以全部遍历一次):
 https://rizlineasset.pigeongames.net/versions/{api所返回的最新版本}/Android/{entry}
 https://rizlineasset.pigeongames.net/versions/{最后一个热更新的版本}/Android/{entry}
 https://rizlineasset.pigeongames.net/versions/{特定资源的version}/Android/{entry}
 ```
 音乐于服务器上的格式为.acb,应当进行转换.  
-  
+
+## 关于ExtraData:
 m_ExtraDataString本质上是一个掺入部分unity/乱码元素的json(经base64加密)  
 可将以下字符串视为分割符:
 ```
@@ -91,6 +94,18 @@ bundle所在url:
 https://rizlineasset.pigeongames.net/versions/{ver}/Android/{"m_Hash"}.bundle
 ```
 *定数/曲目信息于这些bundle其中的一个资产,名称为:Default;类型为:MonoBehaviour  
+
+称号分为三种(也许在文件存储上是两种?):
+- 普通(通过解锁成就获得)
+- exbio(通过购买曲目获得)
+- spbio(通过购买章节获得)
+显然普通称号与exbio(和spbio)是分离开的两类.
+*普通称号(包括成就/成就描述)为这些bundle其中的一个资产,名称为:zh-Hans.achievement;类型为:MonoBehaviour
+*特殊称号为这些bundle其中的一个资产,名称为:zh-Hans.bio;类型为:MonoBehaviour  
+```
+(存疑部分):
+可以通过前面patch的记录的特殊文件来快速获取定数表/称号等
+```
 
 # 无聊琐事
 某些时间rizline的服务器ssl证书可能会掉.导致无法正常登录与下载资源  
