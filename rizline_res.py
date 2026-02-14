@@ -82,12 +82,12 @@ def main():
     info = info_get(bundle_version_dict.copy())
     print("info获取完毕.开始获取资源")
     resource_get(catalog,bundle_version_dict)
-    print("资源获取完毕开始打包成zip.")
-    zip_pack(info)
+    print("资源获取完毕")
+    #zip_pack(info)
     print("解包完毕")
 
 def info_get(bundle:dict):
-    end = 0
+    end = [False] * 3
     for res,ver in bundle.items():
         if isinstance(res,str):
             if not res.endswith(".bundle"):
@@ -104,18 +104,21 @@ def info_get(bundle:dict):
             for obj in env.objects:  # 遍历所有bundle的所有资源
                 data = obj.read()
                 if hasattr(data,"m_Name"):
-                    if data.m_Name == "Default":
-                        print(data.m_Name)
+                    if data.m_Name == "Default" and (not end[0]):
                         d = obj.read_typetree()
-                        end += 1
+                        end[0] = True
                         break
-                    if "zh-Hans." in data.m_Name:
-                        print(data.m_Name)
+                    elif "zh-Hans.bio" in data.m_Name and (not end[1]):
                         with open(f"{data.m_Name}.txt","wb") as tf:
                             tf.write(data.m_Script.encode())
-                        end += 1
+                        end[1] = True
                         break
-        if end >= 4:
+                    elif "zh-Hans.ach" in data.m_Name and (not end[2]):
+                        with open(f"{data.m_Name}.txt","wb") as tf:
+                            tf.write(data.m_Script.encode())
+                        end[2] = True
+                        break
+        if not False in end:
             break
     infos = []
     for song in d["levels"]:
@@ -148,7 +151,7 @@ def info_get(bundle:dict):
     return infos
 
 def resource_get(data,verlist):
-    dir_name = ["chart","illustration","music-acb","music-ogg","Unpack_log","zip"]
+    dir_name = ["chart","illustration","music-acb","music-wav","Unpack_log","zip"]
     for dir in dir_name:
         if not os.path.exists(f"{dir}"):
             os.mkdir(f"{dir}")
@@ -191,11 +194,11 @@ def resource_get(data,verlist):
         if type(table[i][0]) != str or type(table[i][1]) != str:
             del table[i]
             continue
-        if table[i][0][:5] == "chart":
+        if table[i][0].startswith("chart"):
             Resource.append(table[i])
-        elif table[i][0][:12] == "illustration" and table[i][0][-5:] != "HiRes":
+        elif table[i][0].startswith(("illustration","altIllustration")) and table[i][0][-5:] != "HiRes":
             Resource.append(table[i])
-        elif table[i][0][:16] == "CriAddressables/":
+        elif table[i][0].startswith("CriAddressables/"):
             Resource.append(table[i])
         else:
             extra.append(table[i])
@@ -205,22 +208,6 @@ def resource_get(data,verlist):
             f.write(str(Resource[i])+"\n")  # 记录所有符合的资源
         for i in range(len(extra)):
             f.write(str(extra[i])+"\n")
-
-    with open("chart_log","w",encoding="utf-8") as f:
-        for i in range(len(Resource)):
-            if Resource[i][0][:5] == "chart":
-                f.write(str(Resource[i])+"\n")  # 记录所有符合的谱面资源
-    
-    with open("illustration_log","w",encoding="utf-8") as f:
-        for i in range(len(Resource)):
-            if Resource[i][0][:12] == "illustration":
-                f.write(str(Resource[i])+"\n")  # 记录所有符合的曲绘资源
-    
-    with open("music_log","w",encoding="utf-8") as f:
-        for i in range(len(Resource)):
-            if Resource[i][0][:16] == "CriAddressables/":
-                f.write(str(Resource[i])+"\n")  # 记录所有符合的音乐资源
-
     # 谱面示例:['chart.CrazyAudiophile.Supa7onyz.0.IN', '12523ede2bc20dcc4a7822bdd566d2ee.bundle']
     # 音频示例:['CriAddressables/onandon.etia.0.acb=367a00', 'cridata_assets_criaddressables/onandon.etia.0.acb=367a00_7befa38d3fd5cd186b258db5e6641db1.bundle']
     # 曲绘示例:['illustration.SwingSweetTweeDance.Uske.0.HiRes', '403502c402c4be614dd148d6c1738d31.bundle']
@@ -234,18 +221,16 @@ def resource_get(data,verlist):
             ver = verlist[entry]
         else:
             ver = verlist["catalog_catalog.json"]
-        if os.path.exists("chart/%s.json"%key):
+        if os.path.exists("chart/%s.json"%key) or os.path.exists("illustration/%s.png"%key):
             continue
-        if os.path.exists("illustration/%s.png"%key):
-            continue
-        if key.startswith(("chart","illustration")):
+        if key.startswith(("chart","illustration","altIllustration")):
             url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/{entry}"
         elif key.startswith("CriAddressables/") and not entry.startswith("crilocaldata_assets_all"):
             path = key[16:]
             file_name = path[:-7]
             if not safe_string(file_name):
                 file_name = file_name.encode("gbk",errors="ignore").decode("utf-8")
-            if os.path.exists(f"music-ogg/{file_name[:-4]}.ogg"):
+            if os.path.exists(f"music-wav/{file_name[:-4]}.ogg"):
                 continue
             url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/cridata_assets_criaddressables/{path}"
             print(f"音乐url:{url}")
@@ -276,13 +261,13 @@ def resource_get(data,verlist):
     for music_acb in os.listdir("music-acb/"):
         if not safe_string(music_acb):
             music_acb = music_acb.encode("gbk",errors="ignore").decode("utf-8")
-        if not convert_acb_to_ogg(f"music-acb/{music_acb}", "music-ogg"):
+        if not convert_acb_to_ogg(f"music-acb/{music_acb}", "music-wav"):
             print(f"error:{music_acb}")
         else:
             print(f"转换完毕:{music_acb}")
             os.remove(f"music-acb/{music_acb}")
 
-def zip_pack(infos):
+'''def zip_pack(infos):
     #打包
     diffs = ["","EZ","HD","IN","AT"]
     for diff in diffs[1:]:
@@ -302,9 +287,9 @@ def zip_pack(infos):
                 print(f"正在打包:zip/{temp_diff}/{song_info["id"]}.zip")
                 with ZipFile(f"zip/{temp_diff}/{song_info["id"]}.zip","w") as chart_zip:
                     chart_zip.write(f"chart/{song_info["chart_id"][-1]}.json",arcname="chart.json")
-                    chart_zip.write(f"music-ogg/{music_id}.wav",arcname="music.ogg")
+                    chart_zip.write(f"music-wav/{music_id}.wav",arcname="music.ogg")
                     chart_zip.write(f"illustration/{song_info["illustration_id"]}.png",arcname="illustration.png")
-                    chart_zip.writestr("info",json.dumps(real_song_info))
+                    chart_zip.writestr("info",json.dumps(real_song_info))'''
 
 if __name__ == "__main__":
     main()
