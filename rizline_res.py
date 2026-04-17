@@ -267,29 +267,5 @@ def resource_get(data,verlist):
             print(f"转换完毕:{music_acb}")
             os.remove(f"music-acb/{music_acb}")
 
-'''def zip_pack(infos):
-    #打包
-    diffs = ["","EZ","HD","IN","AT"]
-    for diff in diffs[1:]:
-        if not os.path.isdir(f"zip/{diff}/"):
-            os.mkdir(f"zip/{diff}")
-    for song_info in infos:
-        for temp_diff in diffs[::-1]:
-            if temp_diff in song_info:
-                real_song_info = {"name":song_info["name"],
-                                "composer":song_info["composer"],
-                                "illustrator":song_info["illustrator"],
-                                "diff":song_info[temp_diff]["diff"],
-                                "charter":song_info[temp_diff]["charter"]}
-                music_id = song_info["music_id"].lower()
-                if not safe_string(music_id):
-                    music_id = music_id.encode("gbk",errors="ignore").decode("utf-8")
-                print(f"正在打包:zip/{temp_diff}/{song_info["id"]}.zip")
-                with ZipFile(f"zip/{temp_diff}/{song_info["id"]}.zip","w") as chart_zip:
-                    chart_zip.write(f"chart/{song_info["chart_id"][-1]}.json",arcname="chart.json")
-                    chart_zip.write(f"music-wav/{music_id}.wav",arcname="music.ogg")
-                    chart_zip.write(f"illustration/{song_info["illustration_id"]}.png",arcname="illustration.png")
-                    chart_zip.writestr("info",json.dumps(real_song_info))'''
-
 if __name__ == "__main__":
     main()
