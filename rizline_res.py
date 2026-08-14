@@ -68,6 +68,9 @@ async def fetch(session:req.AsyncSession, url):
                 if data.m_Name == "zh-Hans.achievement":
                     with open(f"{data.m_Name}.txt","wb") as tf:
                         tf.write(data.m_Script.encode())
+                if data.m_Name == "zh-Hans.weeklyTask":
+                    with open(f"Rizline_Resource/{data.m_Name}.txt","wb") as tf:
+                        tf.write(data.m_Script.encode())
     else:
         print(url,resp.status_code)
     return False
