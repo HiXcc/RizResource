@@ -4,7 +4,6 @@ import UnityPy
 import os
 from zipfile import ZipFile
 import json
-from RizChartReader import RizlineChartRender
 from acbtoogg import convert_acb_to_ogg
 import pandas as pd
 import asyncio
@@ -38,22 +37,6 @@ def safe_string(string):
     except UnicodeEncodeError:
         return False
 
-def riznote(time,Riztime):
-    for riztime in Riztime:
-        if riztime.start < time <= riztime.end:
-            return True
-    return False
-
-def combo_total(comb):
-    if comb <= 5:
-        return comb
-    elif comb <= 8:
-        return comb * 2 - 5
-    elif comb <= 11:
-        return comb * 3 - 13
-    else:
-        return comb * 4 - 24
-
 def color_convert(color):
     return (round(color["r"]*255),round(color["g"]*255),round(color["b"]*255),round(color["a"]*255))
 
@@ -80,10 +63,10 @@ async def fetch(session:req.AsyncSession, url):
                     if "m_GameObject" in d:
                         return d
                 if data.m_Name == "zh-Hans.bio":
-                    with open(f"Rizline_Resource/{data.m_Name}.txt","wb") as tf:
+                    with open(f"{data.m_Name}.txt","wb") as tf:
                         tf.write(data.m_Script.encode())
                 if data.m_Name == "zh-Hans.achievement":
-                    with open(f"Rizline_Resource/{data.m_Name}.txt","wb") as tf:
+                    with open(f"{data.m_Name}.txt","wb") as tf:
                         tf.write(data.m_Script.encode())
     else:
         print(url,resp.status_code)
@@ -99,7 +82,6 @@ async def info_get(bundle_list:list,ver:dict):
     d = list(filter(lambda x:x,bundle_list))[0]
     infos = []
     diff = {"曲目":[],"EZ":[],"HD":[],"IN":[],"AT":[],"SP":[]}
-    constant_list = []
     for song in d["levels"] + d["discOLevels"]:
         id = song["id"]
         music_id:str = song["musicId"]
@@ -123,33 +105,8 @@ async def info_get(bundle_list:list,ver:dict):
         for chart in chart_id:
             chart_dict = get_info(d["charts"],chart)
             diff[chart_dict["level"]].append(round(chart_dict["difficulty"],1))
-            chart_path = f"Rizline_Resource/chart/{chart}.json"
-            if os.path.exists(chart_path):
-                chart_json = RizlineChartRender(chart_path)
-                rizhit = 0
-                hit = len(chart_json.notes_list)
-                for note in chart_json.notes_list:
-                    if note.type == 2:
-                        hit += 1
-                    if riznote(note.time,chart_json.chart_riztime):
-                        rizhit += 1
-                        if note.type == 2:
-                            rizhit += 1
-                combo = combo_total(hit)
-                constant_list.append(round(chart_dict["difficulty"],1))
-                info.update({chart_dict["level"]:{"diff":round(chart_dict["difficulty"],1),
-                                            "charter":chart_dict["designer"],
-                                            "hit":hit,
-                                            "maxPerfect":rizhit,
-                                            "maxCombo":combo,
-                                            "maxScore":int(rizhit*100+1000000)}})
-            else:
-                info.update({chart_dict["level"]:{"diff":round(chart_dict["difficulty"],1),
-                                            "charter":chart_dict["designer"],
-                                            "hit":0,
-                                            "maxPerfect":0,
-                                            "maxCombo":0,
-                                            "maxScore":0}})
+            info.update({chart_dict["level"]:{"diff":round(chart_dict["difficulty"],1),
+                                        "charter":chart_dict["designer"],}})
             diff_list.append(chart_dict["level"])
         info["diffs"] = diff_list
         diff_list = {"EZ","HD","IN","AT","SP"} - set(diff_list)
@@ -159,7 +116,7 @@ async def info_get(bundle_list:list,ver:dict):
         infos.append(info)
     
     df = pd.DataFrame(diff)
-    with pd.ExcelWriter("Rizline_Resource/定数表.xlsx", engine='openpyxl') as writer:
+    with pd.ExcelWriter("定数表.xlsx", engine='openpyxl') as writer:
         df.to_excel(writer, sheet_name='定数表', index=False)
         worksheet = writer.sheets['定数表']
         worksheet.column_dimensions['A'].width = 68
@@ -172,13 +129,13 @@ async def info_get(bundle_list:list,ver:dict):
             for cell in row:
                 cell.alignment = cell.alignment.copy(horizontal='center', vertical='center')
 
-    with open("Rizline_Resource/info.json","w",encoding="utf-8") as default_mono:
+    with open("info.json","w",encoding="utf-8") as default_mono:
         json.dump(infos,default_mono,ensure_ascii=False)
-    with open("Rizline_Resource/layout.json","w",encoding="utf-8") as default_mono:
+    with open("layout.json","w",encoding="utf-8") as default_mono:
         json.dump(d["layoutColors"],default_mono,ensure_ascii=False)
-    with open("Rizline_Resource/diffcolors.json","w",encoding="utf-8") as default_mono:
+    with open("diffcolors.json","w",encoding="utf-8") as default_mono:
         json.dump(d["difficultyColors"],default_mono,ensure_ascii=False)
-    with open("Rizline_Resource/default_raw.json","w",encoding="utf-8") as default_mono:
+    with open("default_raw.json","w",encoding="utf-8") as default_mono:
         json.dump(d,default_mono,ensure_ascii=False)
 
     print("info done.")
@@ -187,8 +144,8 @@ async def info_get(bundle_list:list,ver:dict):
 def resource_get(data,verlist):
     dir_name = ["chart","illustration","music-acb","music-wav","Unpack_log","zip"]
     for dir in dir_name:
-        if not os.path.exists(f"Rizline_Resource/{dir}"):
-            os.mkdir(f"Rizline_Resource/{dir}")
+        if not os.path.exists(f"{dir}"):
+            os.mkdir(f"{dir}")
     key = base64.b64decode(data["m_KeyDataString"])
     bucket = base64.b64decode(data["m_BucketDataString"])
     entry = base64.b64decode(data["m_EntryDataString"])
@@ -237,23 +194,23 @@ def resource_get(data,verlist):
         else:
             extra.append(table[i])
     
-    with open("Rizline_Resource/Unpack_log/all_resource","w",encoding="utf-8") as f:
+    with open("Unpack_log/all_resource","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             f.write(str(Resource[i])+"\n")  # 记录所有符合的资源
         for i in range(len(extra)):
             f.write(str(extra[i])+"\n")
 
-    with open("Rizline_Resource/Unpack_log/chart_log","w",encoding="utf-8") as f:
+    with open("Unpack_log/chart_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:5] == "chart":
                 f.write(str(Resource[i])+"\n")  # 记录所有符合的谱面资源
     
-    with open("Rizline_Resource/Unpack_log/illustration_log","w",encoding="utf-8") as f:
+    with open("Unpack_log/illustration_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0].startswith(("illustration","altIllustration")):
                 f.write(str(Resource[i])+"\n")  # 记录所有符合的曲绘资源
     
-    with open("Rizline_Resource/Unpack_log/music_log","w",encoding="utf-8") as f:
+    with open("Unpack_log/music_log","w",encoding="utf-8") as f:
         for i in range(len(Resource)):
             if Resource[i][0][:16] == "CriAddressables/":
                 f.write(str(Resource[i])+"\n")  # 记录所有符合的音乐资源
@@ -271,9 +228,9 @@ def resource_get(data,verlist):
             ver = verlist[entry]
         else:
             ver = verlist["catalog_catalog.json"]
-        if os.path.exists("Rizline_Resource/chart/%s.json"%key):
+        if os.path.exists("chart/%s.json"%key):
             continue
-        if os.path.exists("Rizline_Resource/illustration/%s.png"%key):
+        if os.path.exists("illustration/%s.png"%key):
             continue
         if key.startswith(("chart","illustration","altIllustration")):
             url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/{entry}"
@@ -282,7 +239,7 @@ def resource_get(data,verlist):
             file_name = path[:-7]
             if not safe_string(file_name):
                 file_name = file_name.encode("gbk",errors="ignore").decode("utf-8")
-            if os.path.exists(f"Rizline_Resource/music-wav/{file_name[:-4]}.wav"):
+            if os.path.exists(f"music-wav/{file_name[:-4]}.wav"):
                 continue
             url = f"https://rizlineasset.pigeongames.net/versions/{ver}/Android/cridata_assets_criaddressables/{path}"
             music_data = requests.get(url,verify=ssl)
@@ -291,7 +248,7 @@ def resource_get(data,verlist):
                     music_data = requests.get(url,verify=ssl)
                     if music_data.status_code != 404:
                         break
-            with open(f"Rizline_Resource/music-acb/{file_name}","wb") as m:
+            with open(f"music-acb/{file_name}","wb") as m:
                 m.write(music_data.content)
             continue
         else:
@@ -308,15 +265,15 @@ def resource_get(data,verlist):
                 data = obj.read()
                 if obj.type.name == "TextAsset":  # 若为文字资源
                     content = data.m_Script.encode()
-                    with open("Rizline_Resource/chart/%s.json"%key, "wb") as f:
+                    with open("chart/%s.json"%key, "wb") as f:
                         f.write(content)
                 elif obj.type.name == "Texture2D":
-                    data.image.save("Rizline_Resource/illustration/%s.png"%key)
+                    data.image.save("illustration/%s.png"%key)
     
-    for music_acb in os.listdir("Rizline_Resource/music-acb/"):
+    for music_acb in os.listdir("music-acb/"):
         if not safe_string(music_acb):
             music_acb = music_acb.encode("gbk",errors="ignore").decode("utf-8")
-        if not convert_acb_to_ogg(f"Rizline_Resource/music-acb/{music_acb}", "Rizline_Resource/music-wav"):
+        if not convert_acb_to_ogg(f"music-acb/{music_acb}", "music-wav"):
             print(f"error:{music_acb}")
 
     print("resource done.")
@@ -325,12 +282,12 @@ def zip_pack(infos):
     #打包
     diffs = ["EZ","HD","IN","AT","SP"]
     for diff in diffs:
-        if not os.path.isdir(f"Rizline_Resource/zip/{diff}/"):
-            os.mkdir(f"Rizline_Resource/zip/{diff}")
+        if not os.path.isdir(f"zip/{diff}/"):
+            os.mkdir(f"zip/{diff}")
     for song_info in infos:
         for temp_diff in diffs[::-1]:
             if temp_diff in song_info:
-                if os.path.exists(f"Rizline_Resource/chart/chart.{song_info["id"]}.{temp_diff}.json"):
+                if os.path.exists(f"chart/chart.{song_info["id"]}.{temp_diff}.json"):
                     real_song_info = {"name":song_info["name"],
                                     "composer":song_info["composer"],
                                     "illustrator":song_info["illustrator"],
@@ -339,15 +296,18 @@ def zip_pack(infos):
                     music_id = song_info["music_id"].lower()
                     if not safe_string(music_id):
                         music_id = music_id.encode("gbk",errors="ignore").decode("utf-8")
-                    with ZipFile(f"Rizline_Resource/zip/{temp_diff}/{song_info["id"]}.zip","w") as chart_zip:
-                        chart_zip.write(f"Rizline_Resource/chart/chart.{song_info["id"]}.{temp_diff}.json",arcname="chart.json")
-                        chart_zip.write(f"Rizline_Resource/music-wav/{music_id}.wav",arcname="music.wav")
-                        chart_zip.write(f"Rizline_Resource/illustration/{song_info["illustration_id"]}.png",arcname="illustration.png")
+                    with ZipFile(f"zip/{temp_diff}/{song_info["id"]}.zip","w") as chart_zip:
+                        chart_zip.write(f"chart/chart.{song_info["id"]}.{temp_diff}.json",arcname="chart.json")
+                        chart_zip.write(f"music-wav/{music_id}.wav",arcname="music.wav")
+                        chart_zip.write(f"illustration/{song_info["illustration_id"]}.png",arcname="illustration.png")
                         chart_zip.writestr("info",json.dumps(real_song_info))
     
     print("pack done.")
 
 async def main():
+    dir_list = ["chart","music-wav","illustration","zip","music-acb"]
+    for dir in dir_list:
+        os.mkdir(dir)
     print("正在更新rizline数据.")
     base_version:str = getver()
     print(base_version)
