@@ -2,8 +2,9 @@ import os
 import subprocess
 import sys
 import glob
+import re
 
-def convert_acb_to_ogg(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe"):
+def convert_acb_to_wav(acb_path, output_dir, vgmstream_path="vgmstream/vgmstream-cli.exe"):
     if not os.path.isfile(acb_path):
         print(f"错误: ACB文件不存在 - {acb_path}")
         return False
@@ -31,7 +32,8 @@ def convert_acb_to_ogg(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe")
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=True
+            check=True,
+            encoding='utf-8'
         )
         
         if os.path.isfile(output_path):
@@ -53,3 +55,21 @@ def convert_acb_to_ogg(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe")
         print(f"发生未知错误: {str(e)}")
         return False
 
+def get_duration_vgmstream(filepath):
+    try:
+        result = subprocess.run(
+            ["vgmstream/vgmstream-cli.exe", "-m", filepath],
+            capture_output=True, text=True, timeout=30,encoding='utf-8'
+        )
+        
+        for line in result.stdout.splitlines():
+            m = re.search(r'stream total samples:\s*\d+\s*\((\d+):([\d.]+)\s+seconds\)', line, re.I)
+            if m:
+                minutes = int(m.group(1))
+                seconds = float(m.group(2))
+                return minutes * 60 + seconds
+        return None
+        
+    except Exception as e:
+        print(e)
+        return None
