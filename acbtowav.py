@@ -4,7 +4,7 @@ import sys
 import glob
 import re
 
-def convert_acb_to_wav(acb_path, output_dir, vgmstream_path="vgmstream/vgmstream-cli.exe"):
+def convert_acb_to_wav(acb_path, output_dir, vgmstream_path="vgmstream-cli.exe"):
     if not os.path.isfile(acb_path):
         print(f"错误: ACB文件不存在 - {acb_path}")
         return False
@@ -55,10 +55,10 @@ def convert_acb_to_wav(acb_path, output_dir, vgmstream_path="vgmstream/vgmstream
         print(f"发生未知错误: {str(e)}")
         return False
 
-def get_duration_vgmstream(filepath):
+def get_duration_vgmstream(filepath, vgmstream_path="vgmstream-cli.exe"):
     try:
         result = subprocess.run(
-            ["vgmstream/vgmstream-cli.exe", "-m", filepath],
+            [vgmstream_path, "-m", filepath],
             capture_output=True, text=True, timeout=30,encoding='utf-8'
         )
         
